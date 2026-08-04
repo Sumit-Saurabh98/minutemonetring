@@ -1,0 +1,57 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: mmt-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: meanutemonetring
+      POSTGRES_PASSWORD: meanutemonetring
+      POSTGRES_DB: meanutemonetring
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    container_name: mmt-redis
+    restart: unless-stopped
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_data:/data
+
+  nats:
+    image: nats:2.10-alpine
+    container_name: mmt-nats
+    restart: unless-stopped
+    command: ["-js", "-m", "8222"]
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    volumes:
+      - nats_data:/data
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:24-alpine
+    container_name: mmt-clickhouse
+    restart: unless-stopped
+    environment:
+      CLICKHOUSE_USER: meanutemonetring
+      CLICKHOUSE_PASSWORD: meanutemonetring
+      CLICKHOUSE_DB: meanutemonetring
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+
+volumes:
+  postgres_data:
+  redis_data:
+  nats_data:
+  clickhouse_data:

@@ -1,0 +1,10 @@
+{
+  "name": "meanutemonetring",
+  "private": true,
+  "scripts": {},
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "unrs-resolver"
+    ]
+  }
+}
