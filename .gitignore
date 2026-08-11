@@ -11,9 +11,6 @@ build/
 .env
 .env.*
 !.env.example
-*.log
-npm-debug.log*
-pnpm-debug.log*
 
 # OS / IDE
 .DS_Store
