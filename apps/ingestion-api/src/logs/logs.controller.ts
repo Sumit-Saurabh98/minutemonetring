@@ -4,28 +4,30 @@ import {
   HttpCode,
   Logger,
   Post,
+  Req,
   ServiceUnavailableException,
+  UseGuards,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'crypto';
-import { type PubAck } from 'nats';
+import type { PubAck } from 'nats';
 import { IngestLogsDto } from './dto/ingest-logs.dto';
 import { NatsService } from '../nats/nats.service';
+import { AuthGuard } from './guards/auth.guard';
+import type { AuthedRequest } from './guards/auth.guard';
+import { UsageGuard } from './guards/usage.guard';
 
 @Controller('v1/logs')
+@UseGuards(AuthGuard, UsageGuard)
 export class LogsController {
   private readonly logger = new Logger(LogsController.name);
 
-  constructor(
-    private readonly nats: NatsService,
-    private readonly config: ConfigService,
-  ) {}
+  constructor(private readonly nats: NatsService) {}
 
   @Post()
   @HttpCode(202)
-  async create(@Body() body: IngestLogsDto) {
-    // TODO(M2): projectId will come from AuthGuard, not from .env
-    const projectId = this.config.get<string>('DEV_PROJECT_ID')!;
+  async create(@Body() body: IngestLogsDto, @Req() req: AuthedRequest) {
+    // AuthGuard guarantees this is set, or the request never reached here
+    const { projectId, planCode } = req.apiKey!;
 
     const ingestId = randomUUID();
     const receivedAt = new Date().toISOString();
@@ -47,7 +49,6 @@ export class LogsController {
     };
 
     let ack: PubAck;
-
     try {
       ack = await this.nats
         .jetstream()
@@ -65,7 +66,7 @@ export class LogsController {
     }
 
     this.logger.log(
-      `published seq=${ack.seq} events=${envelope.events.length} ingestId=${ingestId}`,
+      `published seq=${ack.seq} events=${envelope.events.length} project=${projectId} plan=${planCode} ingestId=${ingestId}`,
     );
 
     return { accepted: envelope.events.length, ingestId };
