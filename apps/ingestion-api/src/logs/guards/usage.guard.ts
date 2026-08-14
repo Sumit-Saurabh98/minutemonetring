@@ -12,6 +12,7 @@ import { RedisService } from '../../redis/redis.service';
 import { AuthedRequest } from './auth.guard';
 
 const USAGE_TTL_SECONDS = 172_800; // 48h
+const SOFT_LIMIT_RATIO = 0.8;
 
 @Injectable()
 export class UsageGuard implements CanActivate {
@@ -64,8 +65,39 @@ export class UsageGuard implements CanActivate {
       );
     }
 
+    res.setHeader('X-Usage-Limit', String(limit));
     res.setHeader('X-Usage-Remaining', String(Math.max(0, limit - count)));
+
+    if (count >= Math.floor(limit * SOFT_LIMIT_RATIO)) {
+      res.setHeader('X-Usage-Warning', 'soft_limit');
+      await this.warnOncePerDay(apiKey.projectId, day, count, limit);
+    }
+
     return true;
+  }
+
+  private async warnOncePerDay(
+    projectId: string,
+    day: string,
+    count: number,
+    limit: number,
+  ) {
+    try {
+      const first = await this.redis.raw.set(
+        `usage:warned:${projectId}:${day}`,
+        '1',
+        'EX',
+        USAGE_TTL_SECONDS,
+        'NX',
+      );
+      if (first === 'OK') {
+        this.logger.warn(
+          `soft limit reached project=${projectId} ${count}/${limit}`,
+        );
+      }
+    } catch {
+      // warning is best-effort; never fail a good request over it
+    }
   }
 
   private secondsUntilUtcMidnight(): number {
