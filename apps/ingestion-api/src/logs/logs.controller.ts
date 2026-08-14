@@ -15,9 +15,10 @@ import { NatsService } from '../nats/nats.service';
 import { AuthGuard } from './guards/auth.guard';
 import type { AuthedRequest } from './guards/auth.guard';
 import { UsageGuard } from './guards/usage.guard';
+import { SchemaGuard } from './guards/schema.guard';
 
 @Controller('v1/logs')
-@UseGuards(AuthGuard, UsageGuard)
+@UseGuards(SchemaGuard, AuthGuard, UsageGuard)
 export class LogsController {
   private readonly logger = new Logger(LogsController.name);
 
