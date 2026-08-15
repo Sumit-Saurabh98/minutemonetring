@@ -5,6 +5,7 @@ import { HealthController } from "./health/health.controller";
 import { AuthModule } from "./auth/auth.module";
 import { OrgsModule } from "./orgs/org.module";
 import { ProjectsModule } from "./projects/project.module";
+import { ApiKeysModule } from "./api-keys/api-keys.module";
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { ProjectsModule } from "./projects/project.module";
     AuthModule,
     OrgsModule,
     ProjectsModule,
+    ApiKeysModule,
   ],
   controllers: [HealthController],
 })
