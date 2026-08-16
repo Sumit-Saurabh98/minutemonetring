@@ -3,9 +3,12 @@ import {
   ExecutionContext,
   Injectable,
   Logger,
+  OnModuleDestroy,
+  OnModuleInit,
   ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
+import type { Redis } from 'ioredis';
 import { createHash, timingSafeEqual } from 'crypto';
 import { Request } from 'express';
 import { LRUCache } from 'lru-cache';
@@ -28,7 +31,7 @@ const KEY_RE = /^mmt_live_([a-f0-9]{12})_[a-f0-9]{48}$/;
 const REDIS_TTL_SECONDS = 86_400;
 
 @Injectable()
-export class AuthGuard implements CanActivate {
+export class AuthGuard implements CanActivate, OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(AuthGuard.name);
 
   private readonly lru = new LRUCache<string, ApiKeyContext>({
@@ -36,10 +39,27 @@ export class AuthGuard implements CanActivate {
     ttl: 60_000,
   });
 
+  private subscriber?: Redis;
   constructor(
     private readonly redis: RedisService,
     private readonly pg: PgService,
   ) {}
+
+  async onModuleInit() {
+    this.subscriber = this.redis.raw.duplicate();
+    await this.subscriber.connect();
+    await this.subscriber.subscribe('bust:apikey');
+
+    this.subscriber.on('message', (channel, prefix) => {
+      if (channel !== 'bust:apikey') return;
+      this.lru.delete(prefix);
+      this.logger.log(`cache bust LRU prefix=${prefix}`);
+    });
+  }
+
+  async onModuleDestroy() {
+    await this.subscriber?.quit();
+  }
 
   async canActivate(ctx: ExecutionContext): Promise<boolean> {
     const req = ctx.switchToHttp().getRequest<AuthedRequest>();
