@@ -1,20 +1,15 @@
 import "reflect-metadata";
 import { NestFactory } from "@nestjs/core";
 import { ValidationPipe } from "@nestjs/common";
-import { json } from "express";
-import cookieParser from "cookie-parser";
 import { AppModule } from "./app.module";
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, { bodyParser: false });
+  const app = await NestFactory.create(AppModule);
 
   app.enableCors({
     origin: process.env.CORS_ORIGIN ?? "http://localhost:3000",
     credentials: true,
   });
-
-  app.use(json({ limit: "100kb" }));
-  app.use(cookieParser());
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -26,6 +21,6 @@ async function bootstrap() {
 
   app.enableShutdownHooks();
 
-  await app.listen(process.env.PORT ?? 3002);
+  await app.listen(process.env.PORT ?? 3003);
 }
 bootstrap();
